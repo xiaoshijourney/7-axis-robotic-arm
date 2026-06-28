@@ -1,49 +1,58 @@
 # 7-Axis Robotic Arm
 
-基于 MATLAB Robotics System Toolbox 的七自由度机械臂运动学与轨迹规划仿真。
+基于 MATLAB Robotics System Toolbox 的七自由度机械臂运动学仿真与轨迹规划。
 
-## 文件说明
+## 界面
 
-| 文件 | 用途 |
-|------|------|
-| `build_7axis_arm.m` | 机械臂模型构建（刚体树 + 可视化几何体） |
-| `robot_arm_gui.m` | **主程序** — 集成运动学探索 + 轨迹规划的 GUI 界面 |
-| `demo_simulation.m` | pick-and-place 演示脚本（8 个路径点，梯形速度轨迹动画） |
-| `interactive_robot_gui.m` | FK/IK 交互探索界面（滑块控制关节或末端位姿） |
-| `trajectory_planner_gui.m` | 轨迹规划界面（路径点编辑 + 多种轨迹方法 + 动画播放） |
-| `run_tests.m` | 基础测试（模型结构、FK、IK、雅可比、自碰撞、轨迹） |
+| 探索（FK/IK 滑块） | 轨迹规划（路径点 + 动画） |
+|:---:|:---:|
+| ![](res/png/探索界面.png) | ![](res/png/轨迹规划界面.png) |
 
-> `robot_arm_gui.m` 是 `interactive_robot_gui.m` 和 `trajectory_planner_gui.m` 的合并版本，推荐使用。
+## 功能演示
 
-## 运行
+| 正运动学 | 逆运动学 | 轨迹规划 |
+|:---:|:---:|:---:|
+| ![](res/gif/正运动学演示.gif) | ![](res/gif/逆运动学演示.gif) | ![](res/gif/轨迹规划演示.gif) |
+
+## 快速开始
 
 ```matlab
-% 主界面（推荐）
-robot_arm_gui
-
-% 或单独运行演示脚本
-demo_simulation
-
-% 或运行测试
-run_tests
+robot_arm_gui      % 主界面
+demo_simulation    % pick-and-place 演示脚本
+run_tests          % 基础测试
 ```
 
 需要 **MATLAB R2020b+** 和 **Robotics System Toolbox**。
 
+## 文件结构
+
+```
+├── build_7axis_arm.m             机械臂刚体树模型
+├── robot_arm_gui.m              【主程序】探索 + 规划合一界面
+├── interactive_robot_gui.m       FK/IK 滑块交互（已合并入主程序）
+├── trajectory_planner_gui.m      轨迹规划独立版（已合并入主程序）
+├── demo_simulation.m             pick-and-place 动画脚本
+├── run_tests.m                   模型 / FK / IK / 雅可比 / 碰撞 / 轨迹测试
+└── res/                          截图 & GIF
+    ├── png/
+    └── gif/
+```
+
 ## 机械臂参数
 
-- 自由度：7（全旋转关节）
-- 总伸展：约 0.87 m
-- 关节布局：Z-Y-Z-Y-Z-Y-Z（参考 LBR iiwa 的轴线方案）
-- 关节范围：±120° ~ ±175°
+| 项目 | 值 |
+|------|-----|
+| 自由度 | 7（全旋转关节） |
+| 关节布局 | Z-Y-Z-Y-Z-Y-Z |
+| 总伸展 | ≈ 0.87 m |
+| 关节范围 | ±120° ~ ±175° |
+| 重力 | [0 0 -9.81] |
 
-## 支持的轨迹方法
+## 轨迹规划方法
 
-- `trapveltraj` — 梯形速度剖面
-- `cubicpolytraj` — 三次多项式
-- `quinticpolytraj` — 五次多项式
-- `bsplinepolytraj` — B 样条
-
-## 截图
-
-运行 `robot_arm_gui` 后，左侧为 3D 机械臂视图，右侧可在"Explore"（关节/位姿滑块探索）和"Plan"（路径点编辑 + 轨迹生成）两个标签页之间切换。
+| 方法 | 说明 |
+|------|------|
+| `trapveltraj` | 梯形速度剖面，输出速度/加速度 |
+| `cubicpolytraj` | 三次多项式，C² 连续 |
+| `quinticpolytraj` | 五次多项式，C⁴ 连续 |
+| `bsplinepolytraj` | B 样条插值 |
