@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "matlab": {
+      "command": "C:/Users/22929/.matlab/agentic-toolkits/bin/matlab-mcp-server.exe",
+      "args": [
+        "--matlab-session-mode=existing",
+        "--extension-file=C:/Users/22929/.matlab/agentic-toolkits/simulink/tools/tools.json"
+      ],
+      "alwaysLoad": true
+    }
+  }
+}
