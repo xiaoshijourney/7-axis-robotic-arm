@@ -15,6 +15,7 @@ state.config    = homeCfg;      % currently displayed joint config
 state.targetCfg = homeCfg;      % slider target (may differ during drag)
 state.ikOK      = true;
 state.animating = false;        % true during transition animation
+state.animGen   = 0;            % incremented each new animation request
 
 % Debounce timer: only redraw when user pauses dragging (reduces overhead)
 debounceTimer = timer('ExecutionMode', 'singleShot', ...
@@ -210,12 +211,13 @@ ikBtn.ValueChangedFcn = @(src, ~) modeToggle('IK', src.Value);
 
     % Called by debounce timer when user pauses during drag
     function debounceUpdate()
-        if state.animating, return; end
-        animateFK();
+        animateFK();  % animGen mechanism handles interruption
     end
 
     function animateFK()
         if all(abs(state.config - state.targetCfg) < 1e-6), return; end
+        state.animGen = state.animGen + 1;   % signal a new animation
+        myGen = state.animGen;               % remember which generation we are
         state.animating = true;
         qFrom = state.config;
         qTo   = state.targetCfg;
@@ -223,18 +225,18 @@ ikBtn.ValueChangedFcn = @(src, ~) modeToggle('IK', src.Value);
         nSteps = min(nSteps, 30);
         tvec = linspace(0, 1, nSteps);
         [qTraj, ~, ~] = cubicpolytraj([qFrom', qTo'], [0 1], tvec);
+        completed = true;
         for k = 1:nSteps
+            if state.animGen ~= myGen, completed = false; break; end
             state.config = qTraj(:, k)';
             updateRobotView();
             drawnow limitrate;
         end
-        state.config = qTo;
+        if completed, state.config = qTo; end
         state.animating = false;
     end
 
     function onIKSlider()
-        if state.animating, return; end  % skip during animation
-
         x = ikSliders(1).Value;
         y = ikSliders(2).Value;
         z = ikSliders(3).Value;
@@ -283,16 +285,20 @@ ikBtn.ValueChangedFcn = @(src, ~) modeToggle('IK', src.Value);
     end
 
     function animateTransition(qFrom, qTo)
+        state.animGen = state.animGen + 1;   % signal a new animation
+        myGen = state.animGen;
         state.animating = true;
         steps = 25;
         tvec = linspace(0, 1, steps);
         [qTraj, ~, ~] = cubicpolytraj([qFrom', qTo'], [0 1], tvec);
+        completed = true;
         for k = 1:steps
+            if state.animGen ~= myGen, completed = false; break; end
             state.config = qTraj(:, k)';
             updateRobotView();
             drawnow limitrate;
         end
-        state.config = qTo;
+        if completed, state.config = qTo; end
         state.animating = false;
     end
 
