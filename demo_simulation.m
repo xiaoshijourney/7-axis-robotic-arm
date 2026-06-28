@@ -26,6 +26,9 @@ show(robot, homeConfig, 'Visuals', 'on', 'Collisions', 'off', ...
 title(ax, '7-Axis Robotic Arm — Home Configuration', 'FontSize', 14);
 view(ax, [45 25]);
 axis(ax, 'equal');
+xlim(ax, [-0.9 0.9]);
+ylim(ax, [-0.9 0.9]);
+zlim(ax, [-0.1 1.0]);
 grid(ax, 'on');
 drawnow;
 
@@ -125,6 +128,9 @@ show(robot, qTraj(:,1)', 'Visuals', 'on', 'Collisions', 'off', ...
 title(ax, '7-Axis Robotic Arm — Pick & Place Simulation', 'FontSize', 14);
 view(ax, [45 25]);
 axis(ax, 'equal');
+xlim(ax, [-0.9 0.9]);
+ylim(ax, [-0.9 0.9]);
+zlim(ax, [-0.1 1.0]);
 grid(ax, 'on');
 hold(ax, 'on');
 
