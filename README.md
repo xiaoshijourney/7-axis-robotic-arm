@@ -56,3 +56,9 @@ run_tests          % 基础测试
 | `cubicpolytraj` | 三次多项式，C² 连续 |
 | `quinticpolytraj` | 五次多项式，C⁴ 连续 |
 | `bsplinepolytraj` | B 样条插值 |
+
+运行规划后可弹出各关节的角度/角速度/角加速度曲线：
+
+| 梯形速度 | 五次多项式 |
+|:---:|:---:|
+| ![](res/png/梯形速度关节曲线.png) | ![](res/png/五次多项式关节曲线.png) |
