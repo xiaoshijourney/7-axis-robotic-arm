@@ -1,6 +1,8 @@
-# 7-Axis Robotic Arm
+# 6-Axis Robotic Arm
 
-基于 MATLAB Robotics System Toolbox 的七自由度机械臂运动学仿真与轨迹规划。
+基于 MATLAB Robotics System Toolbox 的六自由度机械臂运动学仿真与轨迹规划。
+
+从7轴版本精简而来，移除了冗余的 J3（大臂横滚）关节，保留其余6个关节构成标准工业构型：腰→肩→肘→前臂横滚→腕→工具。
 
 ## 界面
 
@@ -27,7 +29,7 @@ run_tests          % 基础测试
 ## 文件结构
 
 ```
-├── build_7axis_arm.m             机械臂刚体树模型
+├── build_6axis_arm.m             机械臂刚体树模型
 ├── robot_arm_gui.m              【主程序】探索 + 规划合一界面
 ├── interactive_robot_gui.m       FK/IK 滑块交互（已合并入主程序）
 ├── trajectory_planner_gui.m      轨迹规划独立版（已合并入主程序）
@@ -42,8 +44,8 @@ run_tests          % 基础测试
 
 | 项目 | 值 |
 |------|-----|
-| 自由度 | 7（全旋转关节） |
-| 关节布局 | Z-Y-Z-Y-Z-Y-Z |
+| 自由度 | 6（全旋转关节） |
+| 关节布局 | Z-Y-Y-Z-Y-Z |
 | 总伸展 | ≈ 0.87 m |
 | 关节范围 | ±120° ~ ±175° |
 | 重力 | [0 0 -9.81] |
