@@ -410,6 +410,7 @@ buildPlanTab(tabPlan);
 
         % Tab-refresh entry point (called on tab switch)
         function refreshExploreTab()
+            cla(ax);  % 清掉 Plan 标签残留的路径点和轨迹线
             if strcmp(state.kinMode, 'FK')
                 syncFKSlidersFromConfig();
             else
@@ -670,7 +671,7 @@ buildPlanTab(tabPlan);
             trajStatusLbl.Text = 'Generating trajectory...';
             drawnow;
             try
-                [qTraj, ~, tVec] = generateTrajectory(jointWP, method, T_total, N_samp, pkVel);
+                [qTraj, qdTraj, qddTraj, tVec] = generateTrajectory(jointWP, method, T_total, N_samp, pkVel);
             catch ME
                 trajStatusLbl.Text = sprintf('Trajectory error: %s', ME.message);
                 trajStatusLbl.FontColor = [0.85 0.25 0.0];
@@ -681,11 +682,17 @@ buildPlanTab(tabPlan);
             totalPts = size(qTraj, 2);
             if state.animGen ~= myGen, finishRun(); return; end
 
-            % --- Pre-compute EE path ---
+            % --- Pre-compute EE path & actual waypoint EE positions ---
             eePath = zeros(3, totalPts);
             for k = 1:totalPts
                 T = getTransform(robot, qTraj(:, k)', 'ee');
                 eePath(:, k) = T(1:3, 4);
+            end
+            % IK 实际解出的关节角对应的 EE 位置（一定在轨迹线上）
+            wpEE = zeros(3, numWP);
+            for i = 1:numWP
+                T = getTransform(robot, jointWP(:, i)', 'ee');
+                wpEE(:, i) = T(1:3, 4);
             end
 
             % --- Draw ---
@@ -695,7 +702,7 @@ buildPlanTab(tabPlan);
             hold(ax, 'on');
             plot3(ax, eePath(1, :), eePath(2, :), eePath(3, :), ...
                   'g-', 'LineWidth', 1.5);
-            scatter3(ax, wpPos(1, :), wpPos(2, :), wpPos(3, :), ...
+            scatter3(ax, wpEE(1, :), wpEE(2, :), wpEE(3, :), ...
                      80, 'r', 'filled', 'MarkerEdgeColor', 'k');
             title(ax, sprintf('7-Axis Robotic Arm — %s', extractMethodName(method)), ...
                   'FontSize', 12, 'FontWeight', 'bold');
@@ -727,7 +734,7 @@ buildPlanTab(tabPlan);
 
             % --- Cache trajectory data for tab-switch redraw ---
             state.trajData.eePath = eePath;
-            state.trajData.wpPos  = wpPos;
+            state.trajData.wpPos  = wpEE;    % 用 IK 实际解出的位置，不用表格目标值
             state.trajData.method = extractMethodName(method);
             % Update shared config to final frame
             state.config = qTraj(:, end)';
@@ -740,25 +747,74 @@ buildPlanTab(tabPlan);
                 'Done. %d WPs, %d frames, %.1f s, EE path = %.3f m  |  Method: %s', ...
                 numWP, totalPts, tVec(end), eeDist, extractMethodName(method));
             trajStatusLbl.FontColor = [0.0 0.4 0.0];
+
+            % --- Popup: joint profiles ---
+            plotJointProfiles(qTraj, qdTraj, qddTraj, tVec, extractMethodName(method));
         end
 
-        function [q, qd, tv] = generateTrajectory(wpts, method, Ttot, Nseg, pkv)
+        function plotJointProfiles(q, qd, qdd, tv, methodName)
+            % 弹窗显示各关节角度/角速度/角加速度曲线
+            jointNames = {'J1 腰', 'J2 肩', 'J3 臂滚', 'J4 肘', 'J5 前臂', 'J6 腕', 'J7 工具'};
+            colors = lines(7);
+
+            figProf = figure('Name', sprintf('关节曲线 — %s', methodName), ...
+                             'Position', [100 60 1100 780], 'Color', 'w');
+
+            % 关节角度（deg）
+            ax1 = subplot(3, 1, 1);
+            hold(ax1, 'on');  grid(ax1, 'on');
+            for j = 1:7
+                plot(ax1, tv, rad2deg(q(j, :)), 'Color', colors(j,:), 'LineWidth', 1.2);
+            end
+            ylabel(ax1, '角度 (deg)', 'FontSize', 10);
+            title(ax1, sprintf('关节角度 — %s', methodName), 'FontSize', 13, 'FontWeight', 'bold');
+            legend(ax1, jointNames, 'Location', 'bestoutside', 'FontSize', 8);
+            xlim(ax1, [tv(1) tv(end)]);
+
+            % 角速度（deg/s）
+            ax2 = subplot(3, 1, 2);
+            hold(ax2, 'on');  grid(ax2, 'on');
+            for j = 1:7
+                plot(ax2, tv, rad2deg(qd(j, :)), 'Color', colors(j,:), 'LineWidth', 1.2);
+            end
+            ylabel(ax2, '角速度 (deg/s)', 'FontSize', 10);
+            title(ax2, '关节角速度', 'FontSize', 13, 'FontWeight', 'bold');
+            legend(ax2, jointNames, 'Location', 'bestoutside', 'FontSize', 8);
+            xlim(ax2, [tv(1) tv(end)]);
+
+            % 角加速度（deg/s²）
+            ax3 = subplot(3, 1, 3);
+            hold(ax3, 'on');  grid(ax3, 'on');
+            for j = 1:7
+                plot(ax3, tv, rad2deg(qdd(j, :)), 'Color', colors(j,:), 'LineWidth', 1.2);
+            end
+            xlabel(ax3, '时间 (s)', 'FontSize', 10);
+            ylabel(ax3, '角加速度 (deg/s^2)', 'FontSize', 10);
+            title(ax3, '关节角加速度', 'FontSize', 13, 'FontWeight', 'bold');
+            legend(ax3, jointNames, 'Location', 'bestoutside', 'FontSize', 8);
+            xlim(ax3, [tv(1) tv(end)]);
+
+            sgtitle(sprintf('7-Axis Robot Arm — Joint Profiles (%s)', methodName), ...
+                    'FontSize', 16, 'FontWeight', 'bold');
+        end
+
+        function [q, qd, qdd, tv] = generateTrajectory(wpts, method, Ttot, Nseg, pkv)
             numWPs = size(wpts, 2);
             if startsWith(method, 'trapveltraj')
                 opts = {'EndTime', Ttot};
                 if pkv > 0, opts = [opts, {'PeakVelocity', pkv}]; end
-                [q, qd, ~, tv] = trapveltraj(wpts, Nseg, opts{:});
+                [q, qd, qdd, tv] = trapveltraj(wpts, Nseg, opts{:});
             elseif startsWith(method, 'cubicpolytraj')
                 tWPs = linspace(0, Ttot, numWPs);
                 tv   = linspace(0, Ttot, Nseg * numWPs);
-                [q, qd, ~] = cubicpolytraj(wpts, tWPs, tv);
+                [q, qd, qdd] = cubicpolytraj(wpts, tWPs, tv);
             elseif startsWith(method, 'quinticpolytraj')
                 tWPs = linspace(0, Ttot, numWPs);
                 tv   = linspace(0, Ttot, Nseg * numWPs);
-                [q, qd, ~] = quinticpolytraj(wpts, tWPs, tv);
+                [q, qd, qdd] = quinticpolytraj(wpts, tWPs, tv);
             elseif startsWith(method, 'bsplinepolytraj')
                 tv = linspace(0, Ttot, Nseg * numWPs);
-                [q, qd, ~] = bsplinepolytraj(wpts, [0 Ttot], tv);
+                [q, qd, qdd] = bsplinepolytraj(wpts, [0 Ttot], tv);
             else
                 error('Unknown trajectory method.');
             end
@@ -810,6 +866,6 @@ buildPlanTab(tabPlan);
 % ═══════════════════════════════════════════════════════════════════
 %  INIT
 % ═══════════════════════════════════════════════════════════════════
-% Initial render already done above; figure is ready
+% Initial render already doned above; figure is ready
 
 end
