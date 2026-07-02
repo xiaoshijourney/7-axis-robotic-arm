@@ -1,8 +1,8 @@
 function robot_arm_gui()
-%% ROBOT_ARM_GUI  6-axis robot arm — unified kinematics & trajectory planner.
+%% ROBOT_ARM_GUI  7-axis robot arm — unified kinematics & trajectory planner.
 %
 %  Tab 1 "Explore / 探索"
-%    FK Mode : 6 joint-angle sliders → live 3D view + EE pose
+%    FK Mode : 7 joint-angle sliders → live 3D view + EE pose
 %    IK Mode : 6 XYZ/RPY sliders → auto-solve IK → animate transition
 %
 %  Tab 2 "Plan / 轨迹规划"
@@ -12,9 +12,9 @@ function robot_arm_gui()
 % ═══════════════════════════════════════════════════════════════════
 %  SHARED RESOURCES
 % ═══════════════════════════════════════════════════════════════════
-robot = build_6axis_arm();
+robot = build_7axis_arm();
 robot.DataFormat = 'row';
-homeCfg = zeros(1, 6);
+homeCfg = zeros(1, 7);
 
 % ── Shared state ──────────────────────────────────────────────────
 state.kinMode   = 'FK';      % 'FK' or 'IK' (Explore tab sub-mode)
@@ -31,7 +31,7 @@ debounceTimer = [];
 % ═══════════════════════════════════════════════════════════════════
 %  FIGURE & MAIN LAYOUT
 % ═══════════════════════════════════════════════════════════════════
-fig = uifigure('Name', '6-Axis Robot Arm — Kinematics & Trajectory Planner', ...
+fig = uifigure('Name', '7-Axis Robot Arm — Kinematics & Trajectory Planner', ...
                'Position', [40 40 1300 780], 'Resize', 'on');
 fig.CloseRequestFcn = @(~,~) cleanup();
 
@@ -44,7 +44,7 @@ mainGrid = uigridlayout(fig, [1 2], ...
 % ═══════════════════════════════════════════════════════════════════
 viewPanel = uipanel(mainGrid, 'BorderType', 'none');
 ax = axes(viewPanel);
-title(ax, '6-Axis Robotic Arm', 'FontSize', 12, 'FontWeight', 'bold');
+title(ax, '7-Axis Robotic Arm', 'FontSize', 12, 'FontWeight', 'bold');
 view(ax, [40 28]);  hold(ax, 'on');
 axis(ax, 'equal');  grid(ax, 'on');
 xlim(ax, [-0.9 0.9]);  ylim(ax, [-0.9 0.9]);  zlim(ax, [-0.1 1.0]);
@@ -123,16 +123,16 @@ buildPlanTab(tabPlan);
         fkPanel = uipanel(ctrlGrid, 'Title', 'Joint Angles / 关节角度 (deg)', ...
                           'FontWeight', 'bold');
         fkPanel.Layout.Row = 2;
-        fkGrid = uigridlayout(fkPanel, [6 3], ...
+        fkGrid = uigridlayout(fkPanel, [7 3], ...
             'ColumnWidth', {60, '1x', 42}, ...
-            'RowHeight', repmat({28}, 1, 6), ...
+            'RowHeight', repmat({28}, 1, 7), ...
             'Padding', [4 4 4 4], 'RowSpacing', 2, 'ColumnSpacing', 3);
 
-        jointNames = {'J1 腰', 'J2 肩', 'J3 肘', 'J4 前臂', 'J5 腕', 'J6 工具'};
-        fkSliders  = gobjects(1, 6);
-        fkVals     = gobjects(1, 6);
+        jointNames = {'J1 腰', 'J2 肩', 'J3 臂滚', 'J4 肘', 'J5 前臂', 'J6 腕', 'J7 工具'};
+        fkSliders  = gobjects(1, 7);
+        fkVals     = gobjects(1, 7);
 
-        for i = 1:6
+        for i = 1:7
             lims = robot.Bodies{i+1}.Joint.PositionLimits;
             uilabel(fkGrid, 'Text', jointNames{i}, ...
                     'HorizontalAlignment', 'right', 'FontSize', 9);
@@ -356,7 +356,7 @@ buildPlanTab(tabPlan);
         % ========================= HELPERS ===========================
 
         function syncFKSlidersFromConfig()
-            for k = 1:6
+            for k = 1:7
                 fkSliders(k).Value = state.config(k);
                 fkVals(k).Text = sprintf('%.1f', rad2deg(state.config(k)));
             end
@@ -401,7 +401,7 @@ buildPlanTab(tabPlan);
             else
                 tstr = 'Inverse Kinematics';
             end
-            title(ax, sprintf('6-Axis Robotic Arm  —  %s', tstr), ...
+            title(ax, sprintf('7-Axis Robotic Arm  —  %s', tstr), ...
                   'FontSize', 12, 'FontWeight', 'bold');
             subtitle(ax, sprintf('EE: [%.3f  %.3f  %.3f] m', ...
                     T(1,4), T(2,4), T(3,4)));
@@ -410,7 +410,6 @@ buildPlanTab(tabPlan);
 
         % Tab-refresh entry point (called on tab switch)
         function refreshExploreTab()
-            cla(ax);  % 清掉 Plan 标签残留的路径点和轨迹线
             if strcmp(state.kinMode, 'FK')
                 syncFKSlidersFromConfig();
             else
@@ -644,7 +643,7 @@ buildPlanTab(tabPlan);
                 tgtCon = constraintPositionTarget('ee');
             end
 
-            jointWP = zeros(6, numWP);
+            jointWP = zeros(7, numWP);
             qCurrent = state.config;  % start from current config
 
             for i = 1:numWP
@@ -671,7 +670,7 @@ buildPlanTab(tabPlan);
             trajStatusLbl.Text = 'Generating trajectory...';
             drawnow;
             try
-                [qTraj, qdTraj, qddTraj, tVec] = generateTrajectory(jointWP, method, T_total, N_samp, pkVel);
+                [qTraj, ~, tVec] = generateTrajectory(jointWP, method, T_total, N_samp, pkVel);
             catch ME
                 trajStatusLbl.Text = sprintf('Trajectory error: %s', ME.message);
                 trajStatusLbl.FontColor = [0.85 0.25 0.0];
@@ -682,17 +681,11 @@ buildPlanTab(tabPlan);
             totalPts = size(qTraj, 2);
             if state.animGen ~= myGen, finishRun(); return; end
 
-            % --- Pre-compute EE path & actual waypoint EE positions ---
+            % --- Pre-compute EE path ---
             eePath = zeros(3, totalPts);
             for k = 1:totalPts
                 T = getTransform(robot, qTraj(:, k)', 'ee');
                 eePath(:, k) = T(1:3, 4);
-            end
-            % IK 实际解出的关节角对应的 EE 位置（一定在轨迹线上）
-            wpEE = zeros(3, numWP);
-            for i = 1:numWP
-                T = getTransform(robot, jointWP(:, i)', 'ee');
-                wpEE(:, i) = T(1:3, 4);
             end
 
             % --- Draw ---
@@ -702,9 +695,9 @@ buildPlanTab(tabPlan);
             hold(ax, 'on');
             plot3(ax, eePath(1, :), eePath(2, :), eePath(3, :), ...
                   'g-', 'LineWidth', 1.5);
-            scatter3(ax, wpEE(1, :), wpEE(2, :), wpEE(3, :), ...
+            scatter3(ax, wpPos(1, :), wpPos(2, :), wpPos(3, :), ...
                      80, 'r', 'filled', 'MarkerEdgeColor', 'k');
-            title(ax, sprintf('6-Axis Robotic Arm — %s', extractMethodName(method)), ...
+            title(ax, sprintf('7-Axis Robotic Arm — %s', extractMethodName(method)), ...
                   'FontSize', 12, 'FontWeight', 'bold');
             axis(ax, 'equal');
             xlim(ax, [-0.9 0.9]);  ylim(ax, [-0.9 0.9]);  zlim(ax, [-0.1 1.0]);
@@ -725,7 +718,7 @@ buildPlanTab(tabPlan);
                 end
                 show(robot, qTraj(:, frame)', 'Visuals', 'on', 'Collisions', 'off', ...
                      'PreservePlot', false, 'Parent', ax, 'FastUpdate', true);
-                title(ax, sprintf('6-Axis Robotic Arm — %s  |  t = %.1f / %.1f s', ...
+                title(ax, sprintf('7-Axis Robotic Arm — %s  |  t = %.1f / %.1f s', ...
                       extractMethodName(method), tVec(min(frame, end)), tVec(end)), ...
                       'FontSize', 12, 'FontWeight', 'bold');
                 drawnow;
@@ -734,7 +727,7 @@ buildPlanTab(tabPlan);
 
             % --- Cache trajectory data for tab-switch redraw ---
             state.trajData.eePath = eePath;
-            state.trajData.wpPos  = wpEE;    % 用 IK 实际解出的位置，不用表格目标值
+            state.trajData.wpPos  = wpPos;
             state.trajData.method = extractMethodName(method);
             % Update shared config to final frame
             state.config = qTraj(:, end)';
@@ -747,74 +740,25 @@ buildPlanTab(tabPlan);
                 'Done. %d WPs, %d frames, %.1f s, EE path = %.3f m  |  Method: %s', ...
                 numWP, totalPts, tVec(end), eeDist, extractMethodName(method));
             trajStatusLbl.FontColor = [0.0 0.4 0.0];
-
-            % --- Popup: joint profiles ---
-            plotJointProfiles(qTraj, qdTraj, qddTraj, tVec, extractMethodName(method));
         end
 
-        function plotJointProfiles(q, qd, qdd, tv, methodName)
-            % 弹窗显示各关节角度/角速度/角加速度曲线
-            jointNames = {'J1 腰', 'J2 肩', 'J3 肘', 'J4 前臂', 'J5 腕', 'J6 工具'};
-            colors = lines(6);
-
-            figProf = figure('Name', sprintf('关节曲线 — %s', methodName), ...
-                             'Position', [100 60 1100 780], 'Color', 'w');
-
-            % 关节角度（deg）
-            ax1 = subplot(3, 1, 1);
-            hold(ax1, 'on');  grid(ax1, 'on');
-            for j = 1:6
-                plot(ax1, tv, rad2deg(q(j, :)), 'Color', colors(j,:), 'LineWidth', 1.2);
-            end
-            ylabel(ax1, '角度 (deg)', 'FontSize', 10);
-            title(ax1, sprintf('关节角度 — %s', methodName), 'FontSize', 13, 'FontWeight', 'bold');
-            legend(ax1, jointNames, 'Location', 'bestoutside', 'FontSize', 8);
-            xlim(ax1, [tv(1) tv(end)]);
-
-            % 角速度（deg/s）
-            ax2 = subplot(3, 1, 2);
-            hold(ax2, 'on');  grid(ax2, 'on');
-            for j = 1:6
-                plot(ax2, tv, rad2deg(qd(j, :)), 'Color', colors(j,:), 'LineWidth', 1.2);
-            end
-            ylabel(ax2, '角速度 (deg/s)', 'FontSize', 10);
-            title(ax2, '关节角速度', 'FontSize', 13, 'FontWeight', 'bold');
-            legend(ax2, jointNames, 'Location', 'bestoutside', 'FontSize', 8);
-            xlim(ax2, [tv(1) tv(end)]);
-
-            % 角加速度（deg/s²）
-            ax3 = subplot(3, 1, 3);
-            hold(ax3, 'on');  grid(ax3, 'on');
-            for j = 1:6
-                plot(ax3, tv, rad2deg(qdd(j, :)), 'Color', colors(j,:), 'LineWidth', 1.2);
-            end
-            xlabel(ax3, '时间 (s)', 'FontSize', 10);
-            ylabel(ax3, '角加速度 (deg/s^2)', 'FontSize', 10);
-            title(ax3, '关节角加速度', 'FontSize', 13, 'FontWeight', 'bold');
-            legend(ax3, jointNames, 'Location', 'bestoutside', 'FontSize', 8);
-            xlim(ax3, [tv(1) tv(end)]);
-
-            sgtitle(sprintf('6-Axis Robot Arm — Joint Profiles (%s)', methodName), ...
-                    'FontSize', 16, 'FontWeight', 'bold');
-        end
-
-        function [q, qd, qdd, tv] = generateTrajectory(wpts, method, Ttot, Nseg, pkv)
+        function [q, qd, tv] = generateTrajectory(wpts, method, Ttot, Nseg, pkv)
             numWPs = size(wpts, 2);
             if startsWith(method, 'trapveltraj')
                 opts = {'EndTime', Ttot};
                 if pkv > 0, opts = [opts, {'PeakVelocity', pkv}]; end
-                [q, qd, qdd, tv] = trapveltraj(wpts, Nseg, opts{:});
+                [q, qd, ~, tv] = trapveltraj(wpts, Nseg, opts{:});
             elseif startsWith(method, 'cubicpolytraj')
                 tWPs = linspace(0, Ttot, numWPs);
                 tv   = linspace(0, Ttot, Nseg * numWPs);
-                [q, qd, qdd] = cubicpolytraj(wpts, tWPs, tv);
+                [q, qd, ~] = cubicpolytraj(wpts, tWPs, tv);
             elseif startsWith(method, 'quinticpolytraj')
                 tWPs = linspace(0, Ttot, numWPs);
                 tv   = linspace(0, Ttot, Nseg * numWPs);
-                [q, qd, qdd] = quinticpolytraj(wpts, tWPs, tv);
+                [q, qd, ~] = quinticpolytraj(wpts, tWPs, tv);
             elseif startsWith(method, 'bsplinepolytraj')
                 tv = linspace(0, Ttot, Nseg * numWPs);
-                [q, qd, qdd] = bsplinepolytraj(wpts, [0 Ttot], tv);
+                [q, qd, ~] = bsplinepolytraj(wpts, [0 Ttot], tv);
             else
                 error('Unknown trajectory method.');
             end
@@ -843,12 +787,12 @@ buildPlanTab(tabPlan);
                             state.trajData.wpPos(2, :), ...
                             state.trajData.wpPos(3, :), ...
                          80, 'r', 'filled', 'MarkerEdgeColor', 'k');
-                title(ax, sprintf('6-Axis Robotic Arm — %s (last run)', ...
+                title(ax, sprintf('7-Axis Robotic Arm — %s (last run)', ...
                       state.trajData.method), 'FontSize', 12, 'FontWeight', 'bold');
             else
                 show(robot, state.config, 'Visuals', 'on', 'Collisions', 'off', ...
                      'PreservePlot', false, 'Parent', ax);
-                title(ax, '6-Axis Robotic Arm', 'FontSize', 12, 'FontWeight', 'bold');
+                title(ax, '7-Axis Robotic Arm', 'FontSize', 12, 'FontWeight', 'bold');
             end
             axis(ax, 'equal');
             xlim(ax, [-0.9 0.9]);  ylim(ax, [-0.9 0.9]);  zlim(ax, [-0.1 1.0]);
