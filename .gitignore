@@ -1,2 +1,4 @@
 .claude/
-.doc/
+doc/
+CLAUDE.md
+.mcp.json
