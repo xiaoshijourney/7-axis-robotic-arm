@@ -1,14 +1,16 @@
 function robot = build_7axis_arm()
 % 构建一个7自由度机械臂的刚体树模型
-
-%   robot = build_7axis_arm() 返回一个带7个旋转关节、
-%   一个固定底座和一个固定末端法兰的 rigidBodyTree。
-%   每个连杆都带有长方体/圆柱体可视化几何体，用于3D渲染。
-
-%   本来想搞个6轴的，后来看网上说多一个轴可以做避障，就加成7个了。
-%   大臂中间塞了个J3横滚，这样肘部位置不动的时候手肘以上的部分还能转。
-%   坐标变换那边，相邻两段一个绕X转-90°一个转+90°，刚好抵消，零位的时候
-%   不用算来算去，写一半才发现的。
+% ═══════════════════════════════════════════════════════════════════
+%   robot = build_7axis_arm() 
+%   这个文件单独的建立模型，和gui程序分开了
+%   本来搞了个6轴的，后来想了想多一个轴可以做避障，解具有多样性，于是就加成7个了。
+%   当然，六轴的我留在git里的6-axis分支了。
+%   拙作呈上，感谢老师审阅指正
+% ═══════════════════════════════════════════════════════════════════
+%   目前托管在了GitHub上
+%   GitHub仓库地址：https://github.com/xiaoshijourney/7-axis-robotic-arm
+%   日期：2026年7月
+% ═══════════════════════════════════════════════════════════════════
 
 %   关节布局（零位：机械臂竖直向上沿 +Z）：
 %     J1 — 底座旋转（腰），绕 Z 轴
@@ -18,8 +20,7 @@ function robot = build_7axis_arm()
 %     J5 — 小臂横滚，绕 Z 轴
 %     J6 — 腕部俯仰，绕 Y 轴
 %     J7 — 末端横滚，绕 Z 轴
-%
-%   最大伸展距离 ≈ 0.87 m
+
 
     robot = rigidBodyTree('DataFormat', 'row', 'MaxNumBodies', 10);
 
@@ -44,9 +45,9 @@ function robot = build_7axis_arm()
     bW2 = 0.050;     % 连杆方盒宽度（中段）
     bW3 = 0.040;     % 连杆方盒宽度（腕部）
 
-    % ═══════════════════════════════════════════════════
+
     %  底座（固定，连接到机器人根节点 'base'）
-    % ═══════════════════════════════════════════════════
+
     pedestal = rigidBody('pedestal');
     pedestal.Joint = rigidBodyJoint('pedestal_joint', 'fixed');
     % 底座圆柱 + 底板
@@ -54,11 +55,11 @@ function robot = build_7axis_arm()
     addVisual(pedestal, 'Box', [0.24 0.24 0.02], trvec2tform([0 0 0.01]));
     addBody(robot, pedestal, robot.BaseName);
 
-    % ═══════════════════════════════════════════════════
+
     %  连杆1：J1 — 腰部旋转，绕 Z 轴
     %  零位时：连杆坐标系 = 世界坐标系（z = baseH）
     %  连杆沿自身 +Z 方向从 J1 延伸到 J2
-    % ═══════════════════════════════════════════════════
+
     body1 = rigidBody('link1');
     j1 = rigidBodyJoint('jnt1', 'revolute');
     j1.PositionLimits = deg2rad([-170 170]);
@@ -69,12 +70,12 @@ function robot = build_7axis_arm()
     addVisual(body1, 'Box', [bW bW L0], trvec2tform([0 0 L0/2]));
     addBody(robot, body1, 'pedestal');
 
-    % ═══════════════════════════════════════════════════
+
     %  连杆2：J2 — 肩部俯仰，绕 Y 轴
     %  固定变换：沿 Z 平移 L0，再绕 X 转 -90°
     %  零位时：本体系 Z = 父系 Y = 世界 Y，本体系 Y = 世界 -Z
     %  连杆沿本体系 -Y（= 世界 Z）从 J2 延伸到 J3
-    % ═══════════════════════════════════════════════════
+  
     body2 = rigidBody('link2');
     j2 = rigidBodyJoint('jnt2', 'revolute');
     j2.PositionLimits = deg2rad([-120 120]);
@@ -85,12 +86,11 @@ function robot = build_7axis_arm()
     addVisual(body2, 'Box', [bW L1 bW], trvec2tform([0 -L1/2 0]));
     addBody(robot, body2, 'link1');
 
-    % ═══════════════════════════════════════════════════
     %  连杆3：J3 — 大臂横滚，绕 Z 轴（沿大臂方向）
     %  固定变换：沿 Y 平移 -L1，再绕 X 转 +90°
     %  零位时：本体系 = 世界坐标系（前一对 R_x 变换互相抵消）
     %  连杆沿本体系 +Z 从 J3 延伸到 J4
-    % ═══════════════════════════════════════════════════
+
     body3 = rigidBody('link3');
     j3 = rigidBodyJoint('jnt3', 'revolute');
     j3.PositionLimits = deg2rad([-170 170]);
@@ -101,12 +101,12 @@ function robot = build_7axis_arm()
     addVisual(body3, 'Box', [bW2 bW2 L2], trvec2tform([0 0 L2/2]));
     addBody(robot, body3, 'link2');
 
-    % ═══════════════════════════════════════════════════
+
     %  连杆4：J4 — 肘部俯仰，绕 Y 轴
     %  固定变换：沿 Z 平移 L2，再绕 X 转 -90°
     %  零位时：本体系 Z = 世界 Y，本体系 Y = 世界 -Z
     %  连杆沿本体系 -Y（= 世界 Z）—— 小臂
-    % ═══════════════════════════════════════════════════
+
     body4 = rigidBody('link4');
     j4 = rigidBodyJoint('jnt4', 'revolute');
     j4.PositionLimits = deg2rad([-120 120]);
@@ -117,12 +117,12 @@ function robot = build_7axis_arm()
     addVisual(body4, 'Box', [bW2 L3 bW2], trvec2tform([0 -L3/2 0]));
     addBody(robot, body4, 'link3');
 
-    % ═══════════════════════════════════════════════════
+
     %  连杆5：J5 — 小臂横滚，绕 Z 轴（沿小臂方向）
     %  固定变换：沿 Y 平移 -L3，再绕 X 转 +90°
     %  零位时：本体系 = 世界坐标系
     %  连杆沿本体系 +Z 从 J5 延伸到 J6
-    % ═══════════════════════════════════════════════════
+
     body5 = rigidBody('link5');
     j5 = rigidBodyJoint('jnt5', 'revolute');
     j5.PositionLimits = deg2rad([-170 170]);
@@ -133,12 +133,12 @@ function robot = build_7axis_arm()
     addVisual(body5, 'Box', [bW3 bW3 L4], trvec2tform([0 0 L4/2]));
     addBody(robot, body5, 'link4');
 
-    % ═══════════════════════════════════════════════════
+
     %  连杆6：J6 — 腕部俯仰，绕 Y 轴
     %  固定变换：沿 Z 平移 L4，再绕 X 转 -90°
     %  零位时：本体系 Z = 世界 Y，本体系 Y = 世界 -Z
     %  连杆沿本体系 -Y（= 世界 Z）—— 腕部
-    % ═══════════════════════════════════════════════════
+
     body6 = rigidBody('link6');
     j6 = rigidBodyJoint('jnt6', 'revolute');
     j6.PositionLimits = deg2rad([-120 120]);
@@ -149,11 +149,10 @@ function robot = build_7axis_arm()
     addVisual(body6, 'Box', [bW3 L5 bW3], trvec2tform([0 -L5/2 0]));
     addBody(robot, body6, 'link5');
 
-    % ═══════════════════════════════════════════════════
+
     %  连杆7：J7 — 末端横滚，绕 Z 轴（沿工具方向）
     %  固定变换：沿 Y 平移 -L5，再绕 X 转 +90°
     %  零位时：本体系 = 世界坐标系
-    % ═══════════════════════════════════════════════════
     body7 = rigidBody('link7');
     j7 = rigidBodyJoint('jnt7', 'revolute');
     j7.PositionLimits = deg2rad([-175 175]);
@@ -163,9 +162,7 @@ function robot = build_7axis_arm()
     addVisual(body7, 'Cylinder', [jR*0.55 jH*0.55], trvec2tform([0 0 jH/2]));
     addBody(robot, body7, 'link6');
 
-    % ═══════════════════════════════════════════════════
     %  末端执行器（固定法兰 + 夹爪）
-    % ═══════════════════════════════════════════════════
     ee = rigidBody('ee');
     ee.Joint = rigidBodyJoint('ee_joint', 'fixed');
     ee.Joint.setFixedTransform(trvec2tform([0 0 L6]));

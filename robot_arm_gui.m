@@ -1,3 +1,20 @@
+% ═══════════════════════════════════════════════════════════════════
+%   此文件是gui以及算法调用的启动文件
+%   不隐瞒地说，我的开发流程是 claude code + deepseek V4 pro + matlab_mcp
+%   mcp用的是文件夹下的 agenticToolkitInstaller.mltbx
+%   起初问题确实很多，模型奇怪，掉帧，动画抽搐等
+%   机械臂加上了个人认为好看的以及光影，更直观
+%   目前可以以较高的稳定行进行并行动画的实现，极大的减少机械臂动画抽搐的可能，加了安全检测
+%   与此同时，我也限制了帧数以及使用定时器轮询滑块状态来减少性能开销
+%   经过多次迭代之后，目前可以较为稳定的运行了
+%   包含了正逆运动学和轨迹规划的功能同时有可视化的机械臂同步运动
+%   拙作呈上，感谢老师审阅指正
+% ═══════════════════════════════════════════════════════════════════
+%   目前托管在了GitHub上
+%   GitHub仓库地址：https://github.com/xiaoshijourney/7-axis-robotic-arm
+%   日期：2026年7月
+% ═══════════════════════════════════════════════════════════════════
+
 function robot_arm_gui()
 %% ROBOT_ARM_GUI  7-axis robot arm — unified kinematics & trajectory planner.
 %
@@ -59,8 +76,8 @@ restoreLighting();
 tabGroup = uitabgroup(mainGrid);
 tabGroup.SelectionChangedFcn = @(~, evt) onTabSwitch(evt);
 
-tabExplore = uitab(tabGroup, 'Title', '🔍 Explore / 探索');
-tabPlan    = uitab(tabGroup, 'Title', '📐 Plan / 轨迹规划');
+tabExplore = uitab(tabGroup, 'Title', 'Explore / 探索');
+tabPlan    = uitab(tabGroup, 'Title', 'Plan / 轨迹规划');
 
 buildExploreTab(tabExplore);
 buildPlanTab(tabPlan);
